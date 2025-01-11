@@ -5,26 +5,31 @@ pygame.init()
 
 ancho=800
 alto=600
-azul=(0,0,128)
-gris=(150,150,150)
-rojo=(255,0,0)
+azul=(0,0,150)
+gris=(100,100,100)
+rojo=(200,0,0)
 blanco=(255,255,255)
 negro=(0,0,0)
-verde=(0,255,0)
+verde=(0,190,0)
+
 
 #configuracion de la ventana -------------------------------------
 ventana=pygame.display.set_mode((ancho,alto))
-pygame.display.set_caption("Batalla Naval - UN") #Nombre de la ventana 
+pygame.display.set_caption("Batalla Naval - UN") #Nombre de la ventana
+#Fondos---------------------++++++++++--------
+fondo=pygame.image.load("Fondo 1 - 8 bits.jpg") #Ruta de acceso de la imagen
+fondo2=pygame.image.load("Fondo 2 - 8 Bits.jpg")
+
+
+
 
 #Fuentes----------------------------------------------------------
 pygame.font.init()
 Fuente_titulo=pygame.font.Font(None,50) #crecion de la fuente del titulo - none fuente predeterminada- 50 tamaño
-Fuente_opcion=pygame.font.Font(None,60)
-Fuente_Principal=pygame.font.Font(None,70)
+Fuente_opcion=pygame.font.Font(None,55)
+Fuente_Principal=pygame.font.Font(None,65)
 
-titulo=Fuente_titulo.render("Batalla Naval",True, azul) #renderiza el texto con suavizado
-
-#funcion para dibujar el texto de la pantalla inicial y sus botones
+#funciones para dibujar el texto de la pantalla inicial y sus botones
 def NombreTitulo(textoTitulo,Fuente_Principal,color,ventana,x,y):
     principalTitulo=Fuente_Principal.render(textoTitulo,True,color)
     ajuste=principalTitulo.get_rect(center=(x,y))
@@ -42,11 +47,12 @@ def OpcionesMenu(textoOpcion,Fuente_opcion,color,colorRect,ventana,x,y,anchoo,al
 #buble de la pantallla inicial
 def MenuPrincipal():
     while True:
-        ventana.fill(negro) #limpia la pantalla al inicio de cada iteracion de los bubles, borra lo dibujado anteriormente
-        NombreTitulo("BATALLA NAVAL - INTERACTIVO",Fuente_Principal,rojo,ventana,ancho//2,alto//3)
+        #ventana.fill(negro) #limpia la pantalla al inicio de cada iteracion de los bubles, borra lo dibujado anteriormente
+        ventana.blit(fondo,(0,0))
+        NombreTitulo("BATALLA NAVAL - INTERACTIVO",Fuente_Principal,azul,ventana,ancho//2,alto//6)
         #Dibujar botones
-        BotonJuego=OpcionesMenu("Jugar",Fuente_opcion,azul,gris,ventana,ancho//2-150,alto//2-75,300,100)
-        BotonSalir=OpcionesMenu("Salir",Fuente_opcion,verde,gris,ventana,ancho//2-150,alto//2+50,300,100)
+        BotonJuego=OpcionesMenu("Jugar",Fuente_opcion,azul,blanco,ventana,ancho//2-120,alto//2-75,250,80)
+        BotonSalir=OpcionesMenu("Salir",Fuente_opcion,verde,blanco,ventana,ancho//2-120,alto//2+50,250,80)
         #Eventos
         for event in pygame.event.get():
             if(event.type==pygame.QUIT):
@@ -59,14 +65,18 @@ def MenuPrincipal():
                 if(BotonSalir.collidepoint(posMou)):
                     pygame.quit()
                     sys.exit()
+        
     
         pygame.display.flip()
 
 def JuegoLoop():
     mensaje="Haz click en el area roja"
+   
+    titulo=Fuente_titulo.render("Batalla Naval",True, azul) #renderiza el texto con suavizado
     run=True
     while run:
-        ventana.fill(negro) #limpia la pantalla al inicio de cada iteracion de los bubles, borra lo dibujado anteriormente
+        #ventana.fill(negro) #limpia la pantalla al inicio de cada iteracion de los bubles, borra lo dibujado anteriormente
+        ventana.blit(fondo2,(0,0))
         #Eventos-------------------------------------------------------------------------
 
         for evento in pygame.event.get(): #el pygame.event.get(), genera una lista de los eventos que ocurran dentro de la ventana 
@@ -100,3 +110,6 @@ while True:
     modo=MenuPrincipal()
     if(modo=="jugar"):
         JuegoLoop()
+
+
+
