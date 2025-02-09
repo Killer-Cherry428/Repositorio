@@ -94,6 +94,51 @@ Funcionalidades:
 -Determinar el jugador con el mayor puntaje total.
 -Mostrar los puntajes ordenados por ronda."""
 
+def calcular_puntajes_totales(matriz):
+    # Calcula el puntaje total de cada jugador sumando los elementos de su fila
+    return [sum(jugador) for jugador in matriz]
+
+def jugador_con_mayor_puntaje(puntajes_totales):
+    # Encuentra el puntaje máximo de la lista de puntajes totales
+    max_puntaje = max(puntajes_totales)
+    # Retorna el índice del jugador con mayor puntaje y el puntaje máximo
+    return puntajes_totales.index(max_puntaje), max_puntaje
+
+def puntajes_ordenados_por_ronda(matriz):
+    # Transpone la matriz para acceder a los puntajes por ronda y los ordena
+    return [sorted(ronda) for ronda in zip(*matriz)] #el zip(*matriz) lo que hace es convertir las filas en columnas, asi cada fila representa los puntajes de una ronda
+
+def main():
+    # Ejemplo de matriz de puntuaciones: 3 jugadores y 4 rondas
+    matriz = [
+        [10, 20, 30, 40],  # Puntuaciones del Jugador 1
+        [15, 25, 35, 10],  # Puntuaciones del Jugador 2
+        [5,  10, 15, 20]   # Puntuaciones del Jugador 3
+    ]
+
+    # Muestra la matriz inicial de puntuaciones
+    print("Matriz de puntuaciones:")
+    for fila in matriz:
+        print(fila)
+
+    # Calcular puntajes totales de todos los jugadores
+    puntajes_totales = calcular_puntajes_totales(matriz)
+    print("\nPuntaje total de cada jugador:", puntajes_totales)
+
+    # Determinar el jugador con el mayor puntaje total
+    jugador_max, max_puntaje = jugador_con_mayor_puntaje(puntajes_totales)
+    print(f"\nEl jugador con mayor puntaje total es el Jugador {jugador_max + 1} con {max_puntaje} puntos.")
+
+    # Mostrar los puntajes ordenados por cada ronda
+    puntajes_por_ronda = puntajes_ordenados_por_ronda(matriz)
+    print("\nPuntajes ordenados por ronda:")
+    for i, ronda in enumerate(puntajes_por_ronda): #enumerate retorna el indice y el valor del elemento actual "ronda"
+        print(f"Ronda {i + 1}: {ronda}")
+
+
+main()
+
+
 #[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
 
 
