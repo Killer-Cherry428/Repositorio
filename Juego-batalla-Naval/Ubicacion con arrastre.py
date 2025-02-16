@@ -669,17 +669,22 @@ def dibujar_tablero_ataque(x, y, barcos_oponente, disparos_jugador):
     dibujar_grid_tablero(x, y, tam_celda, GRID_SIZE)
     dibujar_coordenadas_tablero(x, y, tam_celda, GRID_SIZE)
     
-    barcos_hundidos = [barco for barco in barcos_oponente if barco.get('hundido', False)]
-    
+    # Procesar todos los disparos
     for d in disparos_jugador:
         if len(d) == 2:
             fila, col = map(int, d)
             pos_x = x + col * tam_celda
             pos_y = y + fila * tam_celda
             
-            # Verificar si es parte de un barco hundido
-            hundido = any([d in barco['posiciones'] for barco in barcos_hundidos])
-            impacto = any([d in barco['posiciones'] for barco in barcos_oponente])
+            # Verificar impacto y hundimiento
+            impacto = False
+            hundido = False
+            for barco in barcos_oponente:
+                if [fila, col] in barco.get('posiciones', []):
+                    impacto = True
+                    if barco.get('hundido', False):
+                        hundido = True
+                    break
             
             if hundido:
                 pygame.draw.rect(ventana, COLOR_HUNDIDO, (pos_x, pos_y, tam_celda, tam_celda))
@@ -689,10 +694,8 @@ def dibujar_tablero_ataque(x, y, barcos_oponente, disparos_jugador):
                 pygame.draw.circle(ventana, COLOR_AGUA, (pos_x + tam_celda//2, pos_y + tam_celda//2), 15)
 
 
-def mostrar_mensaje_hundido(jugador_actual):
-    oponente = "jugador2" if jugador_actual == "jugador1" else "jugador1"
-    barcos_oponente = sala_ref.child(oponente).child("barcos").get() or []
-    
+
+def mostrar_mensaje_hundido(barcos_oponente):
     mensajes = []
     for barco in barcos_oponente:
         if barco.get('hundido', False):
@@ -726,6 +729,7 @@ def JuegoAtaque(jugador_actual):
         ventana.blit(fondo2, (0, 0))
         turno_actual = get_turno()
         oponente = "jugador2" if jugador_actual == "jugador1" else "jugador1"
+        barcos_oponente = sala_ref.child(oponente).child("barcos").get() or []
         
         # Obtener datos desde Firebase
         disparos_jugador_data = sala_ref.child(jugador_actual).child("disparos").get()
@@ -734,12 +738,9 @@ def JuegoAtaque(jugador_actual):
         disparos_oponente = list(disparos_oponente_data.values()) if disparos_oponente_data else []
         
         # Obtener posiciones de barcos (convertidos a listas) de ambos jugadores
-        barcos_oponente_data = sala_ref.child(oponente).child("barcos").get() or []
-        posiciones_oponente = []
-        for barco in barcos_oponente_data:
-            if isinstance(barco, dict) and 'posiciones' in barco:
-                posiciones_oponente.extend(barco['posiciones'])
-        
+        barcos_oponente = sala_ref.child(oponente).child("barcos").get() or []
+
+
         mis_barcos_data = sala_ref.child(jugador_actual).child("barcos").get() or []
         mis_barcos = []
         for barco in mis_barcos_data:
@@ -750,14 +751,14 @@ def JuegoAtaque(jugador_actual):
         titulo = Fuente_titulo.render("Fase de Ataque", True, azul)
         ventana.blit(titulo, (ancho//2 - titulo.get_width()//2, 20))
         dibujar_tablero_defensa(inicioX_defensa, inicioY_tableros, mis_barcos, disparos_oponente)
-        dibujar_tablero_ataque(inicioX_ataque, inicioY_tableros, posiciones_oponente, disparos_jugador)
+        dibujar_tablero_ataque(inicioX_ataque, inicioY_tableros, barcos_oponente, disparos_jugador)        
         
         texto_defensa = Fuente_opcion.render("Tu Tablero", True, azul)
         texto_ataque = Fuente_opcion.render("Tablero Enemigo", True, rojo)
         ventana.blit(texto_defensa, (inicioX_defensa + 50, inicioY_tableros - 40))
         ventana.blit(texto_ataque, (inicioX_ataque + 30, inicioY_tableros - 40))
 
-        mostrar_mensaje_hundido(jugador_actual)
+        mostrar_mensaje_hundido(barcos_oponente)
         
         if time.time() - mensaje_tiempo < 2:
             mensaje_texto = Fuente_opcion.render(mensaje, True, rojo)
@@ -782,14 +783,16 @@ def JuegoAtaque(jugador_actual):
                     fila, col = celda
                     coordenada = [fila, col]
                     
-                    # Convertir a formato de lista para comparación precisa
                     if not any(d == coordenada for d in disparos_jugador):
                         registrar_disparo(jugador_actual, coordenada)
                         
-                        # Convertir posiciones del oponente a listas para comparar
-                        posiciones_oponente_lista = [list(map(int, pos)) for pos in posiciones_oponente]
+                        # Verificar impacto usando barcos_oponente directamente
+                        impacto = False
+                        for barco in barcos_oponente:
+                            if coordenada in barco.get('posiciones', []):
+                                impacto = True
+                                break
                         
-                        impacto = coordenada in posiciones_oponente_lista
                         mensaje = "¡IMPACTO!" if impacto else "AGUA"
                         mensaje_tiempo = time.time()
                         switch_turn(jugador_actual)
