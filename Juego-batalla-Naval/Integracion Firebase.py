@@ -499,3 +499,4 @@ def mostrar_error(mensaje):
     pygame.time.wait(3000)
 
 ejecicionPrincipal()
+
