@@ -153,7 +153,7 @@ COLOR_AGUA = (0, 100, 200)
 
 # Dimensiones del tablero
 tam_tablero = 7
-tam_celda = 50
+tam_celda = 40
 inicioX = (ancho - (tam_tablero * tam_celda)) // 2
 inicioY = (alto - (tam_tablero * tam_celda)) // 2 + 40
 
@@ -210,7 +210,7 @@ def MenuPrincipal():
         pygame.display.flip()
 
 # -------------------------- Funciones de Tablero y Barcos -----------------------------
-tamañoBarcos = [4, 3, 3, 2, 2]
+tamañoBarcos = [4,3,3,2,2,1]
 
 def crear_tablero():
     return {
@@ -221,14 +221,17 @@ def crear_tablero():
 
 def colocarBarcosJugador(ventana):
     tablero = crear_tablero()
-    for tamaño in tamañoBarcos:
+    barcos_a_colocar = tamañoBarcos.copy()  # Copia la lista original
+    
+    while barcos_a_colocar:
+        tamaño = barcos_a_colocar[0]
         colocado = False
         direccion = 'H'
         while not colocado:
             ventana.blit(fondo2, (0, 0))
             Tablero()  # Dibuja el fondo y la cuadrícula
             dibujarBarcosPropios(tablero, ventana)
-            mostrarInstrucciones(tamaño, direccion)
+            mostrarInstrucciones(tamaño, direccion, len(barcos_a_colocar))
             pygame.display.flip()
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
@@ -238,7 +241,7 @@ def colocarBarcosJugador(ventana):
                         direccion = 'V'
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
-                    celda = ClickTablero(pos)
+                    celda = ClickTablero(pos, inicioX, inicioY)
                     if celda:
                         fila, col = celda
                         if validarPosicion(tablero['celdas'], fila, col, tamaño, direccion):
@@ -256,6 +259,7 @@ def colocarBarcosJugador(ventana):
                                     tablero['celdas'][fila + i][col] = 1
                                     barco['posiciones'].append((fila + i, col))
                             tablero['barcos'].append(barco)
+                            barcos_a_colocar.pop(0)  # Remover el barco colocado
                             colocado = True
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -289,12 +293,20 @@ def dibujarBarcosPropios(tablero, ventana):
                     color = COLOR_AGUA
                 pygame.draw.circle(ventana, color, (x + tam_celda//2, y + tam_celda//2), tam_celda//4)
 
-def mostrarInstrucciones(tamaño, direccion):
+def mostrarInstrucciones(tamaño, direccion, barcos_restantes):
     fuente = pygame.font.Font(None, 30)
-    texto = fuente.render(f"Colocando barco de {tamaño} cuadros. Dirección: {direccion} (H/V)", True, negro)
-    ventana.blit(texto, (50, 50))
-    texto2 = fuente.render("Haz clic en la posición inicial", True, negro)
-    ventana.blit(texto2, (50, 80))
+    textos = [
+        f"Barcos restantes: {barcos_restantes}",
+        f"Colocando barco de {tamaño} cuadros",
+        f"Dirección: {direccion} (Presiona H/V para cambiar)",
+        "Haz clic en la posición inicial"
+    ]
+    
+    y = 50
+    for texto in textos:
+        render = fuente.render(texto, True, negro)
+        ventana.blit(render, (50, y))
+        y += 30
 
 def Tablero():
     ventana.blit(fondoTablero, (inicioX, inicioY))
@@ -316,15 +328,16 @@ def Tablero():
         numeroEn = letras_Tablero.render(str(fila+1), True, negro)
         ventana.blit(numeroEn, (x, y - numeroEn.get_height()//2))
 
-def ClickTablero(posicionT):
+def ClickTablero(posicionT, inicioX_tablero, inicioY_tablero):
     xMouse, yMouse = posicionT
     for fila in range(tam_tablero):
-        for columna in range(tam_tablero):
-            x = inicioX + columna * tam_celda
-            y = inicioY + fila * tam_celda
-            ta = pygame.Rect(x, y, tam_celda, tam_celda)
-            if ta.collidepoint(xMouse, yMouse):
-                return fila, columna
+        for col in range(tam_tablero):
+            x = inicioX_tablero + col * tam_celda
+            y = inicioY_tablero + fila * tam_celda
+            rect = pygame.Rect(x, y, tam_celda, tam_celda)
+            if rect.collidepoint(xMouse, yMouse):
+                return fila, col
+    return None
 
 def extraer_coordenadas_barcos(tablero):
     coords = []
@@ -334,39 +347,52 @@ def extraer_coordenadas_barcos(tablero):
 
 # -------------------------- Fase de Ataque -----------------------------
 def JuegoAtaque(jugador_actual):
-    shot_fired = set()  # disparos realizados por el jugador en esta sesión
-    titulo = Fuente_titulo.render("Fase de Ataque", True, azul)
     clock = pygame.time.Clock()
     run = True
+    mensaje = ""
+    mensaje_tiempo = 0
+
+    # Coordenadas para los dos tableros
+    inicioX_defensa = 50
+    inicioX_ataque = ancho//2 + 50
+    inicioY_tableros = 150
 
     while run:
-        turno_actual = get_turno()
-        # Cada iteración se actualiza la información del oponente
-        oponentes_barcos = obtener_barcos_oponente(jugador_actual)
-        
         ventana.blit(fondo2, (0, 0))
-        Tablero()  # Dibuja la cuadrícula y etiquetas
+        turno_actual = get_turno()
+        oponente = "jugador2" if jugador_actual == "jugador1" else "jugador1"
+        
+        # Obtener datos de Firebase
+        disparos_jugador = sala_ref.child(jugador_actual).child("disparos").get() or []
+        disparos_oponente = sala_ref.child(oponente).child("disparos").get() or []
+        barcos_oponente = obtener_barcos_oponente(jugador_actual)
+        mis_barcos = sala_ref.child(jugador_actual).child("barcos").get() or []
+
+        # Dibujar título
+        titulo = Fuente_titulo.render("Fase de Ataque", True, azul)
         ventana.blit(titulo, (ancho//2 - titulo.get_width()//2, 20))
-        pygame.draw.line(ventana, gris, (30, 80), (ancho-30, 80), 2)
         
-        # Dibujar los disparos realizados
-        for coord in shot_fired:
-            fila, col = coord
-            x = inicioX + col * tam_celda
-            y = inicioY + fila * tam_celda
-            if coord in oponentes_barcos:
-                color = COLOR_HUNDIDO
-            else:
-                color = COLOR_AGUA
-            pygame.draw.circle(ventana, color, (x + tam_celda//2, y + tam_celda//2), tam_celda//4)
+        # Dibujar dos tableros
+        dibujar_tablero_defensa(inicioX_defensa, inicioY_tableros, mis_barcos, disparos_oponente)
+        dibujar_tablero_ataque(inicioX_ataque, inicioY_tableros, barcos_oponente, disparos_jugador)
         
-        # Mostrar mensaje de turno
-        font = pygame.font.Font(None, 30)
+        texto_defensa = Fuente_opcion.render("Tu Tablero", True, azul)
+        ventana.blit(texto_defensa, (inicioX_defensa + 50, inicioY_tableros - 40))
+    
+        texto_ataque = Fuente_opcion.render("Tablero Enemigo", True, rojo)
+        ventana.blit(texto_ataque, (inicioX_ataque + 30, inicioY_tableros - 40))
+
+        # Mostrar mensajes
+        if time.time() - mensaje_tiempo < 2:
+            mensaje_texto = Fuente_opcion.render(mensaje, True, rojo)
+            ventana.blit(mensaje_texto, (ancho//2 - mensaje_texto.get_width()//2, alto - 100))
+        
+        # Control de turnos
         if turno_actual == jugador_actual:
-            text_turno = font.render("Tu turno", True, verde)
+            texto_turno = Fuente_opcion.render("Tu turno", True, verde)
         else:
-            text_turno = font.render("Esperando turno...", True, rojo)
-        ventana.blit(text_turno, (50, alto - 50))
+            texto_turno = Fuente_opcion.render("Turno del oponente", True, rojo)
+        ventana.blit(texto_turno, (ancho//2 - texto_turno.get_width()//2, alto - 50))
         
         pygame.display.flip()
         
@@ -375,18 +401,59 @@ def JuegoAtaque(jugador_actual):
                 run = False
             if event.type == pygame.MOUSEBUTTONDOWN and turno_actual == jugador_actual:
                 pos = pygame.mouse.get_pos()
-                celda = ClickTablero(pos)
-                if celda and celda not in shot_fired:
-                    shot_fired.add(celda)
-                    registrar_disparo(jugador_actual, celda)
-                    if celda in oponentes_barcos:
-                        print("¡Impacto!")
-                    else:
-                        print("Agua")
-                    switch_turn(jugador_actual)
+                celda = ClickTablero(pos, inicioX_ataque, inicioY_tableros)
+                if celda:
+                    fila, col = celda
+                    # Verificar si ya se disparó aquí
+                    if not any(d == [fila, col] for d in disparos_jugador):
+                        resultado = "¡Impacto!" if [fila, col] in barcos_oponente else "Tiro fallido"
+                        mensaje = resultado
+                        mensaje_tiempo = time.time()
+                        registrar_disparo(jugador_actual, [fila, col])
+                        switch_turn(jugador_actual)
+        
         clock.tick(30)
     pygame.quit()
     sys.exit()
+
+
+# Funciones auxiliares para dibujar los tableros
+def dibujar_tablero_defensa(x, y, barcos_propios, disparos_oponente):
+    # Dibujar fondo del tablero
+    ventana.blit(fondoTablero, (x, y)) 
+
+    # Título del tablero
+    texto_titulo = Fuente_opcion.render("Tus Barcos", True, azul)
+    ventana.blit(texto_titulo, (x + (tam_tablero*tam_celda)//2 - texto_titulo.get_width()//2, y - 40))
+    
+    # Dibujar celdas y barcos
+    for fila in range(tam_tablero):
+        for col in range(tam_tablero):
+            rect = pygame.Rect(x + col*tam_celda, y + fila*tam_celda, tam_celda, tam_celda)
+            pygame.draw.rect(ventana, negro, rect, 1)
+            
+            # Mostrar TODOS los barcos propios
+            if [fila, col] in barcos_propios:
+                pygame.draw.rect(ventana, COLOR_BARCO, rect.inflate(-4, -4))
+            
+            # Mostrar impactos recibidos
+            if any(d == [fila, col] for d in disparos_oponente.values()):
+                color = COLOR_HUNDIDO if [fila, col] in barcos_propios else COLOR_AGUA
+                pygame.draw.circle(ventana, color, rect.center, 15)
+
+def dibujar_tablero_ataque(x, y, barcos_oponente, disparos_jugador):
+    # Dibujar fondo del tablero
+    ventana.blit(fondoTablero, (x, y))    
+    # Dibujar celdas y disparos
+    for fila in range(tam_tablero):
+        for col in range(tam_tablero):
+            rect = pygame.Rect(x + col*tam_celda, y + fila*tam_celda, tam_celda, tam_celda)
+            pygame.draw.rect(ventana, negro, rect, 1)
+            
+            # Mostrar disparos realizados
+            if any(d == [fila, col] for d in disparos_jugador):
+                color = rojo if [fila, col] in barcos_oponente else COLOR_AGUA
+                pygame.draw.circle(ventana, color, rect.center, 15)
 
 # -------------------------- Flujo Principal -----------------------------
 def ejecicionPrincipal():
