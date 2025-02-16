@@ -437,7 +437,7 @@ def dibujar_tablero_defensa(x, y, barcos_propios, disparos_oponente):
                 pygame.draw.rect(ventana, COLOR_BARCO, rect.inflate(-4, -4))
             
             # Mostrar impactos recibidos
-            if any(d == [fila, col] for d in disparos_oponente.values()):
+            if any(d == [fila, col] for d in disparos_oponente):
                 color = COLOR_HUNDIDO if [fila, col] in barcos_propios else COLOR_AGUA
                 pygame.draw.circle(ventana, color, rect.center, 15)
 
