@@ -672,7 +672,7 @@ def JuegoAtaque(jugador_actual):
     # Coordenadas de los tableros en la fase de ataque
     inicioX_defensa = 50
     inicioX_ataque = ancho//2 + 50
-    inicioY_tableros = 150
+    inicioY_tableros = 180
 
     while run:
         ventana.blit(fondo2, (0, 0))
@@ -844,4 +844,4 @@ def mostrar_error(mensaje):
 
 if __name__ == '__main__':
     main()
-    
+
