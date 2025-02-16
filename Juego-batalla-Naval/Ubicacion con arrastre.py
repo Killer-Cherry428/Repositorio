@@ -18,24 +18,24 @@ def guardar_datos_jugador(jugador, datos_personales, barcos_completos):
         "disparos": []
     }
     
-    # Convertir estructura de barcos para Firebase
-    for nombre_barco, info_barco in barcos_completos.items():
-        barco_firebase = {
-            "posiciones": [],
-            "tamaño": info_barco["size"],
-            "orientacion": info_barco["orientacion"],
+    for nombre_barco, info in barcos_completos.items():
+        # Convertir posiciones a formato numérico
+        posiciones_numericas = []
+        for coord in info["posiciones"]:
+            if isinstance(coord, str):  # Si viene como "A1"
+                fila = int(coord[1:]) - 1
+                col = ord(coord[0].upper()) - 65
+                posiciones_numericas.append([fila, col])
+            else:  # Si ya es lista [fila, col]
+                posiciones_numericas.append(coord)
+        
+        data["barcos"].append({
+            "posiciones": posiciones_numericas,
+            "tamaño": info["size"],
+            "orientacion": info["orientacion"],
             "impactos": 0,
             "hundido": False
-        }
-        
-        # Convertir coordenadas tipo "A1" a [fila, columna]
-        for coord in info_barco["posiciones"]:
-            letra = coord[0].upper()
-            numero = int(coord[1:]) - 1  # Convertir a índice 0-based
-            columna = ord(letra) - 65    # A=0, B=1, etc.
-            barco_firebase["posiciones"].append([numero, columna])
-        
-        data["barcos"].append(barco_firebase)
+        })
     
     sala_ref.child(jugador).set(data)
 
@@ -55,11 +55,7 @@ def obtener_barcos_oponente(jugador_actual):
     barcos = []
     for barco in data:
         if isinstance(barco, dict) and 'posiciones' in barco:
-            # Convertir a formato ["A1", "A2", ...]
-            for fila, col in barco['posiciones']:
-                letra = chr(col + 65)  # 0 -> A
-                numero = fila + 1
-                barcos.append(f"{letra}{numero}")
+            barcos.extend(barco['posiciones'])  # Ya están en formato [fila, col]
     return barcos
 
 def registrar_disparo(jugador, coordenada):
@@ -596,11 +592,15 @@ def dibujar_impacto(x, y, es_impacto):
     else:
         pygame.draw.circle(ventana, COLOR_AGUA, rect.center, 15)
 
-def coord_str_to_indices(coord_str):
-    # Suponemos que la coordenada es de la forma "E2", donde la letra indica la columna y el número la fila.
+def coord_str_to_indices(coord):
+    # Si la coordenada ya es una lista [fila, col], devolver directamente
+    if isinstance(coord, list) and len(coord) == 2:
+        return coord[0], coord[1]
+    
+    # Si es string tipo "A1"
     columnas = "ABCDEFG"
-    col_letter = coord_str[0]
-    row = int(coord_str[1:]) - 1  # Convertimos el número y restamos 1 para que sea índice (0-indexado)
+    col_letter = coord[0].upper()
+    row = int(coord[1:]) - 1
     col = columnas.index(col_letter)
     return row, col
 
@@ -608,25 +608,19 @@ def coord_str_to_indices(coord_str):
 def dibujar_tablero_defensa(x, y, barcos_propios, disparos_oponente):
     ventana.blit(fondoTablero, (x, y))
     
-    # Dibujar barcos propios (convertimos cada coordenada de cadena a índices)
+    # Dibujar barcos (ya vienen en formato numérico desde Firebase)
     for coord in barcos_propios:
         row, col = coord_str_to_indices(coord)
         rect = pygame.Rect(x + col * tam_celda, y + row * tam_celda, tam_celda, tam_celda)
         pygame.draw.rect(ventana, COLOR_BARCO, rect.inflate(-4, -4))
     
-    # Dibujar disparos recibidos (aquí disparos_oponente son listas [fila, col])
+    # Dibujar disparos recibidos
     for d in disparos_oponente:
         if len(d) == 2:
             fila, col = d
             pos_x = x + col * tam_celda
             pos_y = y + fila * tam_celda
-            # Convertimos la coordenada [fila, col] a string para compararla
-            columnas = "ABCDEFG"
-            coord_str = f"{columnas[col]}{fila+1}"
-            if coord_str in barcos_propios:
-                dibujar_impacto(pos_x, pos_y, True)
-            else:
-                pygame.draw.circle(ventana, COLOR_AGUA, (pos_x + tam_celda//2, pos_y + tam_celda//2), 15)
+            pygame.draw.circle(ventana, COLOR_AGUA, (pos_x + tam_celda//2, pos_y + tam_celda//2), 15)
 
 def dibujar_tablero_ataque(x, y, barcos_oponente, disparos_jugador):
     ventana.blit(fondoTablero, (x, y))
