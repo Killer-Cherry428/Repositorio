@@ -13,10 +13,14 @@ blanco=(255,255,255)
 negro=(0,0,0)
 verde=(0,190,0)
 
+COLOR_BARCO = (75, 75, 75)
+COLOR_HUNDIDO = (200, 0, 0)
+COLOR_AGUA = (0, 100, 200)
+
 #Dimensiones 
 #tablero
-tam_tablero=10 #10x10
-tam_celda=40 #Tamaño del cuadrado en pixeles
+tam_tablero=7 #10x10
+tam_celda=50 #Tamaño del cuadrado en pixeles
 inicioX=(ancho-(tam_tablero*tam_celda))//2
 inicioY=(alto-(tam_tablero*tam_celda))//2+40
 
@@ -91,54 +95,152 @@ def MenuPrincipal():
 
 #---------------------------INCORPORACION DE BARCOS-----------------------------------
 
-"""def AgregarBarcos(ventana):
-    barcos=[]
+# Agrega en las constantes
+tamañoBarcos = [4, 3, 3, 2, 2]  # Un barco de 3, dos de 2 y dos de 1
 
-    #dimensiones de los barcos
-    barcosDimensiones=[(5,1),(4,1),(3,1),(3,1),(2,1)]
+def crear_tablero():
+    return {
+        'celdas': [[0 for _ in range(tam_tablero)] for _ in range(tam_tablero)],
+        'barcos': [],
+        'intentos': set()
+    }
 
-    for tamaño,alto in barcosDimensiones:
-        colocado=False
+# Función para colocar barcos
+def colocarBarcosJugador(ventana):
+    tablero = crear_tablero()
+    
+    for tamaño in tamañoBarcos:
+        colocado = False
+        direccion = 'H'
+        
         while not colocado:
-            horizontal=random.choise([True,False]) #genera la posicion dentro del tablero
-            if(horizontal): #genera posicion horizontal
-                fila=random.randint(0,tam_tablero-1)
-                columna=random.randint(0,tam_tablero-tamaño)
-            else:           #genera posicion vertical
-                fila=random.randint(0,tam_tablero-tamaño)
-                columna=random.randint(0,tam_tablero-1)
+            ventana.blit(fondo2, (0,0))
+            Tablero()
+            dibujarBarcos(tablero, ventana)
+            mostrarInstrucciones(tamaño, direccion)
+            pygame.display.flip()
             
-            #revisar que no se superpongan los barcos
-            espacioLleno=False
-            for i in range(tamaño):
-                if(horizontal):
-                    if((fila,columna+i) in barcos):
-                        espacioLleno=True
-                        break
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_h:
+                        direccion = 'H'
+                    elif event.key == pygame.K_v:
+                        direccion = 'V'
+                        
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+                    celda = ClickTablero(pos)
+                    if celda:
+                        fila, col = celda
+                        if validarPosicion(tablero['celdas'], fila, col, tamaño, direccion):
+                            barco = {
+                                'posiciones': [],
+                                'tamaño': tamaño,
+                                'impactos': 0,
+                                'hundido': False
+                            }
+                            for i in range(tamaño):
+                                if direccion == 'H':
+                                    tablero['celdas'][fila][col + i] = 1
+                                    barco['posiciones'].append((fila, col + i))
+                                else:
+                                    tablero['celdas'][fila + i][col] = 1
+                                    barco['posiciones'].append((fila + i, col))
+                            tablero['barcos'].append(barco)
+                            colocado = True
+                            
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+    
+    return tablero
+
+def validarPosicion(tablero, fila, col, tamaño, direccion):
+    try:
+        if direccion == 'H':
+            # Verificar si cabe horizontalmente
+            if col + tamaño > tam_tablero:
+                return False
+            # Verificar colisión con otros barcos
+            return all(tablero[fila][col + i] == 0 for i in range(tamaño))
+        else:
+            # Verificar si cabe verticalmente
+            if fila + tamaño > tam_tablero:
+                return False
+            # Verificar colisión con otros barcos
+            return all(tablero[fila + i][col] == 0 for i in range(tamaño))
+    except IndexError:
+        return False
+
+def colocarBarco(tablero, fila, col, tamaño, direccion):
+    for i in range(tamaño):
+        if direccion == 'H':
+            tablero[fila][col + i] = 1
+        else:
+            tablero[fila + i][col] = 1
+
+def dibujarBarcos(tablero, ventana):
+    for fila in range(tam_tablero):
+        for col in range(tam_tablero):
+            if tablero[fila][col] == 1:
+                x = inicioX + col * tam_celda
+                y = inicioY + fila * tam_celda
+                pygame.draw.rect(ventana, (75,75,75), (x+1, y+1, tam_celda-2, tam_celda-2))
+
+def mostrarInstrucciones(tamaño, direccion):
+    fuente = pygame.font.Font(None, 30)
+    texto = fuente.render(f"Colocando barco de {tamaño} cuadros. Dirección: {direccion} (H/V)", True, negro)
+    ventana.blit(texto, (50, 50))
+    texto2 = fuente.render("Haz clic en la posición inicial", True, negro)
+    ventana.blit(texto2, (50, 80))
+
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+
+def manejar_disparo(tablero, fila, col):
+    if (fila, col) in tablero['intentos']:
+        return None  # Ya se disparó aquí
+    
+    tablero['intentos'].add((fila, col))
+    
+    if tablero['celdas'][fila][col] == 1:
+        # Verificar si el barco está hundido
+        for barco in tablero['barcos']:
+            if (fila, col) in barco['posiciones']:
+                barco['impactos'] += 1
+                if barco['impactos'] == barco['tamaño']:
+                    barco['hundido'] = True
+                    return 'hundido'
+                return 'impacto'
+    return 'agua'
+
+
+def dibujarBarcos(tablero, ventana):
+    for fila in range(tam_tablero):
+        for col in range(tam_tablero):
+            x = inicioX + col * tam_celda
+            y = inicioY + fila * tam_celda
+            
+            if tablero['celdas'][fila][col] == 1:
+                # Dibujar barco (solo en tu propio tablero)
+                pygame.draw.rect(ventana, COLOR_BARCO, (x+1, y+1, tam_celda-2, tam_celda-2))
+            
+            # Dibujar disparos
+            if (fila, col) in tablero['intentos']:
+                if tablero['celdas'][fila][col] == 1:
+                    color = COLOR_HUNDIDO if any(barco['hundido'] for barco in tablero['barcos'] if (fila,col) in barco['posiciones']) else rojo
                 else:
-                    if((fila+i,columna) in barcos):
-                        espacioLleno=True
-                        break
-            if (not espacioLleno): 
-                for i in range(tamaño):
-                    if(horizontal):
-                        barcos.append((fila,columna+i)) #se guarda la coordenada del barco en la lista
-                    else:
-                        barcos.append((fila+i,columna))
-                colocado=True
-
-    #agregar las imagenes de los barcos repetir esta seccion la cantidad de vecs necesaria para la cantidad de barcos
-    for posicion in barcos:
-        x=inicioX+posicion[1]*tam_celda
-        y=inicioY+posicion[0]*tam_celda
-        barcoImagen=pygame.image.load("")
-        barcoImagen=pygame.transform.scale(barcoImagen,(tam_celda,tam_celda))
-        ventana.blit(barcoImagen,(x,y))
+                    color = COLOR_AGUA
+                pygame.draw.circle(ventana, color, (x + tam_celda//2, y + tam_celda//2), tam_celda//4)
 
 
-"""
-
-
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+#[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
 
 
 
@@ -160,7 +262,7 @@ def Tablero():
             y=inicioY+fila*tam_celda
             pygame.draw.rect(ventana,negro,(x,y,tam_celda,tam_celda),1) #el 1 representa el valor de la linea divisoria del tablero
 
-    letras="ABCDEFGHIJ" #PRIMERAS 10 LETRAS DE ABECEDARIO
+    letras="ABCDEFG" #PRIMERAS 10 LETRAS DE ABECEDARIO
     for columna in range(tam_tablero):
         x=inicioX+columna*tam_celda+tam_celda//2
         y=inicioY-30
@@ -169,7 +271,7 @@ def Tablero():
         letraEn=letras_Tablero.render(letras[columna],True,negro)
         ventana.blit(letraEn,(x-letraEn.get_width()//2,y))
 
-    numero="12345678910" #PRIMEROS 10 numeros
+    numero="1234567" #PRIMEROS 10 numeros
     for fila in range(tam_tablero):
         x=inicioX-30
         y=inicioY+fila*tam_celda+tam_celda//2
@@ -197,6 +299,8 @@ def ClickTablero(posicionT):
 
 #----------------------------------------JUEGO BUCLE-------------------------------------
 def JuegoLoop():
+
+    tableroJugador=colocarBarcosJugador(ventana)
    
     titulo=Fuente_titulo.render("Batalla Naval",True, azul) #renderiza el texto con suavizado
     run=True
@@ -223,6 +327,8 @@ def JuegoLoop():
         ventana.blit(titulo,(ancho//2 - titulo.get_width()//2,20)) #(texto,(Coordenada x,y))
         pygame.draw.line(ventana,gris,(30,80),(ancho-30,80),2) #(30 valor de ancho, 80 alto), el 2 es el grosor
 
+        dibujarBarcos(tableroJugador,ventana)
+
         #dibujar rectangulo
 
         """fuente=pygame.font.Font(None,33)
@@ -242,5 +348,6 @@ while True:
     modo=MenuPrincipal()
     if(modo=="jugar"):
         JuegoLoop()
+
 
 
