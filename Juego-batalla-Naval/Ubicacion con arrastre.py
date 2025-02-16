@@ -225,6 +225,7 @@ def MenuPrincipal():
         pygame.display.flip()
 
 # -------------------------- PANEL DE ESTRATEGIA (COLOCACIÓN DE BARCOS) -----------------------------
+
 # Parámetros y variables para el panel
 GRID_SIZE = 7
 # Para el panel, usaremos celdas de 40 píxeles y una grilla ubicada en (ORIGEN_GRID_X, ORIGEN_GRID_Y)
@@ -843,3 +844,4 @@ def mostrar_error(mensaje):
 
 if __name__ == '__main__':
     main()
+    
