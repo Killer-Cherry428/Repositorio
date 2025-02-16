@@ -55,7 +55,8 @@ def obtener_barcos_oponente(jugador_actual):
     barcos = []
     for barco in data:
         if isinstance(barco, dict) and 'posiciones' in barco:
-            barcos.extend(barco['posiciones'])  # Ya están en formato [fila, col]
+            # Convertir cada posición a lista de enteros
+            barcos.extend([list(map(int, pos)) for pos in barco['posiciones']])
     return barcos
 
 def registrar_disparo(jugador, coordenada):
@@ -584,6 +585,21 @@ def manejar_mousebuttonup_panel(event):
                     reiniciar_barco_fuera(b)
 
 # -------------------------- FASE DE ATAQUE (con Firebase) -----------------------------
+def dibujar_coordenadas_tablero(x, y, tam_celda, grid_size):
+    # Letras (columnas)
+    letras = "ABCDEFG"
+    for i in range(grid_size):
+        texto = letras[i]
+        render = letras_Tablero.render(texto, True, negro)
+        ventana.blit(render, (x + i*tam_celda + tam_celda//2 - render.get_width()//2, y - 30))
+
+    # Números (filas)
+    for i in range(grid_size):
+        texto = str(i+1)
+        render = letras_Tablero.render(texto, True, negro)
+        ventana.blit(render, (x - 30, y + i*tam_celda + tam_celda//2 - render.get_height()//2))
+
+
 def dibujar_impacto(x, y, es_impacto):
     rect = pygame.Rect(x, y, tam_celda, tam_celda)
     if es_impacto:
@@ -607,6 +623,7 @@ def coord_str_to_indices(coord):
 
 def dibujar_tablero_defensa(x, y, barcos_propios, disparos_oponente):
     ventana.blit(fondoTablero, (x, y))
+    dibujar_coordenadas_tablero(x, y, tam_celda, GRID_SIZE)
     
     # Dibujar barcos (ya vienen en formato numérico desde Firebase)
     for coord in barcos_propios:
@@ -624,18 +641,26 @@ def dibujar_tablero_defensa(x, y, barcos_propios, disparos_oponente):
 
 def dibujar_tablero_ataque(x, y, barcos_oponente, disparos_jugador):
     ventana.blit(fondoTablero, (x, y))
+    dibujar_coordenadas_tablero(x, y, tam_celda, GRID_SIZE)
     
     for d in disparos_jugador:
         if len(d) == 2:
-            fila, col = d
+            fila, col = map(int, d)  # Asegurar valores enteros
             pos_x = x + col * tam_celda
             pos_y = y + fila * tam_celda
-            columnas = "ABCDEFG"
-            coord_str = f"{columnas[col]}{fila+1}"
-            if coord_str in barcos_oponente:
-                dibujar_impacto(pos_x, pos_y, True)
+            impacto = [fila, col] in barcos_oponente
+            
+            if impacto:
+                # Dibujar X roja
+                pygame.draw.line(ventana, COLOR_HUNDIDO, (pos_x, pos_y), 
+                               (pos_x + tam_celda, pos_y + tam_celda), 3)
+                pygame.draw.line(ventana, COLOR_HUNDIDO, 
+                               (pos_x + tam_celda, pos_y), (pos_x, pos_y + tam_celda), 3)
             else:
-                pygame.draw.circle(ventana, COLOR_AGUA, (pos_x + tam_celda//2, pos_y + tam_celda//2), 15)
+                # Círculo azul
+                pygame.draw.circle(ventana, COLOR_AGUA, 
+                                 (pos_x + tam_celda//2, pos_y + tam_celda//2), 15)
+
 
 def JuegoAtaque(jugador_actual):
     clock = pygame.time.Clock()
@@ -704,13 +729,16 @@ def JuegoAtaque(jugador_actual):
                 
                 if celda:
                     fila, col = celda
-                    # Convertir a formato de coordenadas del oponente
-                    letra = chr(col + 65)
-                    coord_str = f"{letra}{fila + 1}"
+                    coordenada = [fila, col]
                     
-                    if coord_str not in disparos_jugador:
-                        registrar_disparo(jugador_actual, [fila, col])
-                        impacto = coord_str in posiciones_oponente  # Se compara como listas
+                    # Convertir a formato de lista para comparación precisa
+                    if not any(d == coordenada for d in disparos_jugador):
+                        registrar_disparo(jugador_actual, coordenada)
+                        
+                        # Convertir posiciones del oponente a listas para comparar
+                        posiciones_oponente_lista = [list(map(int, pos)) for pos in posiciones_oponente]
+                        
+                        impacto = coordenada in posiciones_oponente_lista
                         mensaje = "¡IMPACTO!" if impacto else "AGUA"
                         mensaje_tiempo = time.time()
                         switch_turn(jugador_actual)
