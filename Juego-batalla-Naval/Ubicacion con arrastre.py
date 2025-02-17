@@ -95,12 +95,12 @@ def registrar_usuario_gui(jugador_num):
         ventana.blit(fondo2, (0, 0))
         
         # Título de registro
-        NombreTitulo(f"Registro Jugador {jugador_num}", Fuente_Principal, azul, ventana, ancho//2, 100)
+        NombreTitulo(f"Registro Jugador {jugador_num}", Fuente_Principal, negro, ventana, ancho//2, 100)
 
         # Dibujar cada campo de registro
         y = 200
         for i, campo in enumerate(campos):
-            color = verde if i == campo_actual else gris
+            color = negro if i == campo_actual else azulsuave
             if i == campo_actual:
                 contenido = texto_ingresado + "_"
             else:
@@ -165,10 +165,13 @@ ancho = 800
 alto = 600
 azul = (0, 0, 150)
 gris = (100, 100, 100)
+azulsuave=(0,90,250)
 rojo = (200, 0, 0)
 blanco = (255, 255, 255)
 negro = (0, 0, 0)
 verde = (0, 190, 0)
+azul_bonito = (61, 145, 197)
+azul_botones = (58, 111, 147)
 COLOR_BARCO = (75, 75, 75)
 COLOR_HUNDIDO = (200, 0, 0)
 COLOR_AGUA = (0, 100, 200)
@@ -189,6 +192,8 @@ icono = pygame.image.load("Icono.jpg")
 pygame.display.set_icon(icono)
 fondoTablero = pygame.image.load("Fondo Tablero.jpg")
 fondoTablero = pygame.transform.scale(fondoTablero, (tam_tablero * tam_celda, tam_tablero * tam_celda))
+fondoEstrategia = pygame.image.load("Fondo estrategia.jpg")
+fondoEstrategia = pygame.transform.scale(fondoEstrategia, (ancho, alto))
 
 pygame.font.init()
 Fuente_titulo = pygame.font.Font(None, 50)
@@ -521,7 +526,7 @@ def dibujar_barcos_panel(superficie):
         color = gris if selected else COLOR_BARCO
         rect = pygame.Rect(px, py, w, h)
         pygame.draw.rect(superficie, color, rect)
-        pygame.draw.rect(superficie, verde, rect, 2)
+        pygame.draw.rect(superficie, azul_bonito, rect, 2)
 
 def dibujar_botones_panel(superficie):
     botones = [
@@ -530,11 +535,11 @@ def dibujar_botones_panel(superficie):
         (boton_aleatorio, "Aleatorio", (5, 10))
     ]
     for rect, text, offset in botones:
-        pygame.draw.rect(superficie, azul, rect)
+        pygame.draw.rect(superficie, azul_botones, rect)
         txt = fuente.render(text, True, negro)
         superficie.blit(txt, (rect.x + offset[0], rect.y + offset[1]))
     if all(b['on_board'] for b in barcos):
-        pygame.draw.rect(superficie, rojo, boton_inicio)
+        pygame.draw.rect(superficie, azul_bonito, boton_inicio)
         txt = fuente.render("Inicio", True, blanco)
         superficie.blit(txt, (boton_inicio.x + 10, boton_inicio.y + 10))
 
@@ -705,14 +710,18 @@ def mostrar_mensaje_hundido(barcos_oponente):
     
     # Posicionamiento mejorado
     y_pos = 100  # Bajar un poco desde el título
-    for msg in mensajes[-3:]:  # Mostrar últimos 3 mensajes
+    for msg in mensajes[-1:]:  # Mostrar últimos 1 mensajes
         texto = Fuente_opcion.render(msg, True, rojo)
         fondo_msg = pygame.Surface((texto.get_width() + 20, texto.get_height() + 10))
-        fondo_msg.set_alpha(200)  # Transparencia
+        fondo_msg.set_alpha(150)  # Transparencia
         fondo_msg.fill(negro)
         ventana.blit(fondo_msg, (ancho//2 - texto.get_width()//2 - 10, y_pos - 5))
         ventana.blit(texto, (ancho//2 - texto.get_width()//2, y_pos))
         y_pos += 40
+
+
+#------------------------------------
+
 
 def JuegoAtaque(jugador_actual):
     clock = pygame.time.Clock()
@@ -755,10 +764,11 @@ def JuegoAtaque(jugador_actual):
         
         texto_defensa = Fuente_opcion.render("Tu Tablero", True, azul)
         texto_ataque = Fuente_opcion.render("Tablero Enemigo", True, rojo)
-        ventana.blit(texto_defensa, (inicioX_defensa + 50, inicioY_tableros - 40))
-        ventana.blit(texto_ataque, (inicioX_ataque + 30, inicioY_tableros - 40))
+        ventana.blit(texto_defensa, (inicioX_defensa + 50, inicioY_tableros - 80))
+        ventana.blit(texto_ataque, (inicioX_ataque , inicioY_tableros - 80))
 
         mostrar_mensaje_hundido(barcos_oponente)
+        
         
         if time.time() - mensaje_tiempo < 2:
             mensaje_texto = Fuente_opcion.render(mensaje, True, rojo)
@@ -828,7 +838,9 @@ def panel_strategy():
                 manejar_mousemotion_panel(event)
             elif event.type == pygame.MOUSEBUTTONUP:
                 manejar_mousebuttonup_panel(event)
-        ventana.fill(COLOR_FONDO)
+        ventana.blit(fondoEstrategia, (0, 0))
+        NombreTitulo("Panel de Estrategia", Fuente_opcion, negro, ventana, ancho//2, 30)
+
         dibujar_grilla_panel(ventana)
         dibujar_barcos_panel(ventana)
         dibujar_botones_panel(ventana)
@@ -858,8 +870,9 @@ def main():
     # Selección de jugador (en este ejemplo, se asume que el usuario es jugador1)
     ventana.blit(fondo2, (0,0))
     NombreTitulo("Selecciona tu jugador", Fuente_Principal, azul, ventana, ancho//2, 100)
-    boton_j1 = OpcionesMenu("Jugador 1", Fuente_opcion, blanco, azul, ventana, ancho//2 - 150, 250, 200, 50)
+    boton_j1 = OpcionesMenu("Jugador 1", Fuente_opcion, blanco, azul, ventana, ancho//2 - 250, 250, 200, 50)
     boton_j2 = OpcionesMenu("Jugador 2", Fuente_opcion, blanco, azul, ventana, ancho//2 + 50, 250, 200, 50)
+   
     pygame.display.flip()
     jugador_num = None
     while jugador_num not in [1, 2]:
