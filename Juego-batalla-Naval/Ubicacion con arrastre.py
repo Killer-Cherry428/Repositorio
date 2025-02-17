@@ -4,7 +4,7 @@ from firebase_admin import credentials, db
 
 # -------------------------- Firebase -----------------------------
 # Inicializar Firebase con tu certificado y URL
-cred = credentials.Certificate(r"C:\Users\User\Documents\Visual Studio Code - Programación\Python\Firebase\Firebase compartido - Batalla naval\bookstoreproject-8b4f0-firebase-adminsdk-2eymv-b7972991ba.json")
+cred = credentials.Certificate(r"C:\Users\MIANO\Documents\Proyectos Python\Python\bookstoreproject-8b4f0-firebase-adminsdk-2eymv-b7972991ba.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': "https://bookstoreproject-8b4f0-default-rtdb.firebaseio.com/"
 })
@@ -709,7 +709,7 @@ def mostrar_mensaje_hundido(barcos_oponente):
             mensajes.append(f"¡Hundiste {nombre} ({tamaño} cañones)!")
     
     # Posicionamiento mejorado
-    y_pos = 100  # Bajar un poco desde el título
+    y_pos = 50  # Bajar un poco desde el título
     for msg in mensajes[-1:]:  # Mostrar últimos 1 mensajes
         texto = Fuente_opcion.render(msg, True, rojo)
         fondo_msg = pygame.Surface((texto.get_width() + 20, texto.get_height() + 10))
