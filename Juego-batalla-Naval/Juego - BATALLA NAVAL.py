@@ -94,6 +94,8 @@ def switch_turn(jugador_actual):
 
 # -------------------------- Registro de Usuario -----------------------------
 def registrar_usuario_gui(jugador_num):
+    global ventana, fondo, fondo2, ancho, alto 
+
     datos = {"UserName": "", "Edad": "", "Correo": ""}
     campos = ["UserName", "Edad", "Correo"]
     campo_actual = 0
@@ -166,10 +168,37 @@ def registrar_usuario_gui(jugador_num):
                     else:
                         activo = False
                         break
-
+            
+            elif event.type == pygame.VIDEORESIZE:
+                ancho, alto = event.w, event.h
+                ventana = pygame.display.set_mode((ancho, alto), pygame.RESIZABLE)
+                
+                # Recalcular tamaño de celdas y posición de la grilla
+                tam_celda = min((ancho - 100) // GRID_SIZE, (alto - 200) // GRID_SIZE)
+                ORIGEN_GRID_X = (ancho - (GRID_SIZE * tam_celda)) // 2
+                ORIGEN_GRID_Y = (alto - (GRID_SIZE * tam_celda)) // 2 + 40
+                
+                # Reescalar fondos
+                fondo = pygame.transform.smoothscale(pygame.image.load("Fondo 1 - 8 bits.jpg"), (ancho, alto))
+                fondo2 = pygame.transform.smoothscale(pygame.image.load("Fondo 2 - 8 Bits.jpg"), (ancho, alto))
+       
     return f"jugador{jugador_num}", datos
 
 # -------------------------- Configuración Pygame y Recursos -----------------------------
+ancho = 800
+alto = 600
+
+# Tamaño base predeterminado
+ancho_base = 800
+alto_base = 600
+ANCHO_MAX = 1366  # Cambia según la pantalla
+ALTO_MAX = 768
+
+
+# Variable de estado
+is_maximized = False
+
+
 pygame.init()
 
 pygame.mixer.init() #Configuracion de sonidos 
@@ -190,8 +219,6 @@ sonido_impacto.set_volume(0.5)
 sonido_menu.set_volume(0.2)
 
 # Dimensiones y colores
-ancho = 800
-alto = 600
 azul = (20, 78, 180 ) 
 gris = (100, 100, 100)
 azulsuave=(0,90,250)
@@ -213,16 +240,34 @@ inicioX = (ancho - (tam_tablero * tam_celda)) // 2
 inicioY = (alto - (tam_tablero * tam_celda)) // 2 + 40
 
 # Recursos gráficos y fuentes
-ventana = pygame.display.set_mode((ancho, alto))
-pygame.display.set_caption("Batalla Naval - UN")
+global fondo, fondo2
 fondo = pygame.image.load("Fondo 1 - 8 bits.jpg")
 fondo2 = pygame.image.load("Fondo 2 - 8 Bits.jpg")
+fondo = pygame.transform.smoothscale(fondo, (ancho, alto))
+fondo2 = pygame.transform.smoothscale(fondo2, (ancho, alto))
+
+
+ventana = pygame.display.set_mode((ancho, alto), pygame.RESIZABLE)
+pygame.display.set_caption("Batalla Naval - UN")
 icono = pygame.image.load("Icono.jpg")
 pygame.display.set_icon(icono)
 fondoTablero = pygame.image.load("Fondo Tablero.jpg")
 fondoTablero = pygame.transform.scale(fondoTablero, (tam_tablero * tam_celda, tam_tablero * tam_celda))
 fondoEstrategia = pygame.image.load("Fondo estrategia.jpg")
 fondoEstrategia = pygame.transform.scale(fondoEstrategia, (ancho, alto))
+
+# Imagen Barcos 
+imagenes_barcos = {
+    'Portaaviones': pygame.image.load("Portaaviones.jpg"),
+    'Destructor': pygame.image.load("Destructor.jpg"),
+    'Crucero': pygame.image.load("Crucero.jpg"),
+    'Fragata': pygame.image.load("Fragata.jpg"),
+    'Submarino': pygame.image.load("Submarino.jpg"),
+}
+
+# Escalar imágenes al tamaño de celda
+for nombre, img in imagenes_barcos.items():
+    imagenes_barcos[nombre] = pygame.transform.scale(img, (tam_celda, tam_celda))
 
 pygame.font.init()
 Fuente_titulo = pygame.font.Font(None, 50)
@@ -233,6 +278,7 @@ fuente = pygame.font.SysFont(None, 24)
 
 # -------------------------- Funciones de Menú e Interfaz -----------------------------
 def NombreTitulo(textoTitulo, fuenteTitulo, color, ventana, x, y):
+    global ancho, alto
     principalTitulo = fuenteTitulo.render(textoTitulo, True, color)
     ajuste = principalTitulo.get_rect(center=(x, y))
     ventana.blit(principalTitulo, ajuste)
@@ -255,9 +301,39 @@ def atenuar_fondo(ventana, intensidad):
     # Dibujar la superficie sobre el fondo
     ventana.blit(atenuacion, (0, 0))
 
+def actualizar_escala_global():
+    global escala, tam_celda, ORIGEN_GRID_X, ORIGEN_GRID_Y
+    
+    if is_maximized:
+        escala_w = ANCHO_MAX / ancho_base
+        escala_h = ALTO_MAX / alto_base
+        escala = min(escala_w, escala_h)
+    else:
+        escala = 1.0
+    
+    # Ajustar todos los elementos
+    tam_celda = int(40 * escala)
+    ORIGEN_GRID_X = int((ancho - (GRID_SIZE * tam_celda)) // 2)
+    ORIGEN_GRID_Y = int((alto - (GRID_SIZE * tam_celda)) // 2 + int(40 * escala))
+    
+    # Reescalar fondos
+    fondo = pygame.transform.smoothscale(pygame.image.load("Fondo 1 - 8 bits.jpg"), (ancho, alto))
+    fondo2 = pygame.transform.smoothscale(pygame.image.load("Fondo 2 - 8 Bits.jpg"), (ancho, alto))
+
 def MenuPrincipal():
+    global ventana, ancho, alto, fondo, fondo2,is_maximized
+   
     while True:
+
         ventana.blit(fondo, (0, 0))
+        atenuar_fondo(ventana, 50)
+
+         # Botón para maximizar
+        if not is_maximized:
+            boton_maximizar = OpcionesMenu("Maximizar", Fuente_opcion, blanco, azul, ventana, ancho//2-120, alto//2+150, 200, 50)
+        else:
+            boton_restaurar = OpcionesMenu("Restaurar", Fuente_opcion, blanco, rojo, ventana, ancho//2-120, alto//2+150, 200, 50)
+
         atenuar_fondo(ventana, 50)
         NombreTitulo("BATALLA NAVAL", Fuente_Principal, azul, ventana, ancho//2, alto//6)
         BotonJuego = OpcionesMenu("Jugar", Fuente_opcion, azul, blanco, ventana, ancho//2-120, alto//2-75, 250, 80)
@@ -273,6 +349,30 @@ def MenuPrincipal():
                 if BotonSalir.collidepoint(posMou):
                     pygame.quit()
                     sys.exit()
+                if not is_maximized and boton_maximizar.collidepoint(pos):
+                    ventana = pygame.display.set_mode((ANCHO_MAX, ALTO_MAX), pygame.FULLSCREEN)
+                    is_maximized = True
+                    actualizar_escala_global()
+                elif is_maximized and boton_restaurar.collidepoint(pos):
+                    ventana = pygame.display.set_mode((ancho_base, alto_base))
+                    is_maximized = False
+                    actualizar_escala_global()
+
+
+                elif event.type == pygame.VIDEORESIZE:
+                    ancho, alto = event.w, event.h
+                    ventana = pygame.display.set_mode((ancho, alto), pygame.RESIZABLE)
+                    
+                    # Recalcular tamaño de celdas y posición de la grilla
+                    tam_celda = min((ancho - 100) // GRID_SIZE, (alto - 200) // GRID_SIZE)
+                    ORIGEN_GRID_X = (ancho - (GRID_SIZE * tam_celda)) // 2
+                    ORIGEN_GRID_Y = (alto - (GRID_SIZE * tam_celda)) // 2 + 40
+                    
+                    # Reescalar fondos
+                    fondo = pygame.transform.smoothscale(pygame.image.load("Fondo 1 - 8 bits.jpg"), (ancho, alto))
+                    fondo2 = pygame.transform.smoothscale(pygame.image.load("Fondo 2 - 8 Bits.jpg"), (ancho, alto))
+       
+
         pygame.display.flip()
 
 # -------------------------- PANEL DE ESTRATEGIA (COLOCACIÓN DE BARCOS) -----------------------------
@@ -284,7 +384,13 @@ ORIGEN_GRID_X = 300
 ORIGEN_GRID_Y = 100
 
 # Lista de tamaños (puedes ajustar la cantidad y tamaños; aquí usamos 6 barcos)
-TAMAÑOS_BARCOS = [4, 3, 3, 2, 2, 1]
+TAMAÑOS_BARCOS = [
+    {'size': 4, 'name': 'Portaaviones'},
+    {'size': 3, 'name': 'Destructor'},
+    {'size': 3, 'name': 'Crucero'},
+    {'size': 2, 'name': 'Fragata'},
+    {'size': 2, 'name': 'Submarino'},
+] 
 barcos = []   # Lista de barcos (cada uno es un diccionario)
 grid = [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]  # 0 = libre, 1 = ocupado
 
@@ -304,11 +410,12 @@ def inicializar_barcos():
     x_inicial = 50
     y_inicial = 100
     separacion = 60
-    for i, size in enumerate(TAMAÑOS_BARCOS):
+    for i, barco_info in enumerate(TAMAÑOS_BARCOS):
         default_x = x_inicial
         default_y = y_inicial + i * separacion
         barco = {
-            'size': size,
+            'size': barco_info['size'],
+            'name': barco_info['name'],
             'vertical': False,
             'on_board': False,
             'board_col': -1,
@@ -547,26 +654,50 @@ def dibujar_grid_tablero(x, y, tam_celda, grid_size):
                         2)
 
 def dibujar_barcos_panel(superficie):
+    escala_x = ancho / ancho_base
+    escala_y = alto / alto_base
     for barco in barcos:
+        # Usar variables escaladas
+        tam_celda_actual = tam_celda
+        origen_x = ORIGEN_GRID_X
+        origen_y = ORIGEN_GRID_Y
+
+
+    for barco in barcos:
+        tam_celda_escalado = tam_celda * min(escala_x, escala_y)
         size = barco['size']
         vertical = barco['vertical']
-        selected = barco['selected']
+        nombre = barco['name']
+        
+        # Cargar imagen vertical original
+        img_original = imagenes_barcos[nombre]
+        
+        # Rotar 90° solo si está en horizontal
+        if not vertical:
+            img_rotada = pygame.transform.rotate(img_original, 90)
+        else:
+            img_rotada = img_original
+        
+        # Calcular dimensiones según orientación
+        if vertical:
+            ancho_barco = tam_celda
+            alto_barco = tam_celda * size
+        else:
+            ancho_barco = tam_celda * size
+            alto_barco = tam_celda
+        
+        # Escalar imagen
+        img_escalada = pygame.transform.smoothscale(img_rotada, (ancho_barco, alto_barco))
+        
+        # Posicionar en la grilla
         if barco['on_board']:
             px = ORIGEN_GRID_X + barco['board_col'] * tam_celda
             py = ORIGEN_GRID_Y + barco['board_row'] * tam_celda
         else:
             px = barco['x']
             py = barco['y']
-        if vertical:
-            w = tam_celda
-            h = tam_celda * size
-        else:
-            w = tam_celda * size
-            h = tam_celda
-        color = gris if selected else COLOR_BARCO
-        rect = pygame.Rect(px, py, w, h)
-        pygame.draw.rect(superficie, color, rect)
-        pygame.draw.rect(superficie, azul_bonito, rect, 2)
+        
+        superficie.blit(img_escalada, (px, py))
 
 def dibujar_botones_panel(superficie):
     botones = [
@@ -740,7 +871,6 @@ def dibujar_tablero_ataque(x, y, barcos_oponente, disparos_jugador):
                 pygame.draw.circle(ventana, COLOR_AGUA, (pos_x + tam_celda//2, pos_y + tam_celda//2), 15)
 
 
-
 def mostrar_mensaje_hundido(barcos_oponente):
     mensajes = []
     for barco in barcos_oponente:
@@ -760,11 +890,10 @@ def mostrar_mensaje_hundido(barcos_oponente):
         ventana.blit(texto, (ancho//2 - texto.get_width()//2, y_pos))
         y_pos += 40
 
-
 #------------------------------------
 
-
 def JuegoAtaque(jugador_actual):
+    global ventana, ancho, alto, fondo, fondo2, tam_celda, ORIGEN_GRID_X, ORIGEN_GRID_Y    
     clock = pygame.time.Clock()
     run = True
     mensaje = ""
@@ -911,8 +1040,21 @@ def JuegoAtaque(jugador_actual):
                         mensaje_tiempo = time.time()
                         switch_turn(jugador_actual)
                         time.sleep(0.5)
-        
 
+            if event.type == pygame.VIDEORESIZE:
+                ancho, alto = event.w, event.h
+                ventana = pygame.display.set_mode((ancho, alto), pygame.RESIZABLE)
+                
+                # Recalcular tamaño de celdas y posición de la grilla
+                tam_celda = min((ancho - 100) // GRID_SIZE, (alto - 200) // GRID_SIZE)
+                ORIGEN_GRID_X = (ancho - (GRID_SIZE * tam_celda)) // 2
+                ORIGEN_GRID_Y = (alto - (GRID_SIZE * tam_celda)) // 2 + 40
+                
+                # Reescalar fondos
+                fondo = pygame.transform.smoothscale(pygame.image.load("Fondo 1 - 8 bits.jpg"), (ancho, alto))
+                fondo2 = pygame.transform.smoothscale(pygame.image.load("Fondo 2 - 8 Bits.jpg"), (ancho, alto))
+       
+       
         #---------------------------/////////////////////----------------------------
         if game_over or sala_ref.child("game_over").get():
             sonido_fondo.stop()
@@ -951,6 +1093,13 @@ def ClickTablero(posicionT, inicioX_tablero, inicioY_tablero):
 
 # -------------------------- FASE DEL PANEL (SHIP PLACEMENT) -----------------------------
 def panel_strategy():
+    global ventana, ancho, alto, tam_celda, ORIGEN_GRID_X, ORIGEN_GRID_Y
+
+    # Calcular tamaño de celdas
+    tam_celda = min((ancho - 100) // GRID_SIZE, (alto - 200) // GRID_SIZE)
+    ORIGEN_GRID_X = (ancho - (GRID_SIZE * tam_celda)) // 2
+    ORIGEN_GRID_Y = (alto - (GRID_SIZE * tam_celda)) // 2 + 40
+
     # Esta función ejecuta la fase de colocación de barcos (panel de estrategia)
     reloj = pygame.time.Clock()
     inicializar_barcos()
@@ -967,6 +1116,19 @@ def panel_strategy():
                 manejar_mousemotion_panel(event)
             elif event.type == pygame.MOUSEBUTTONUP:
                 manejar_mousebuttonup_panel(event)
+            elif event.type == pygame.VIDEORESIZE:
+                ancho, alto = event.w, event.h
+                ventana = pygame.display.set_mode((ancho, alto), pygame.RESIZABLE)
+                
+                # Recalcular tamaño de celdas y posición de la grilla
+                tam_celda = min((ancho - 100) // GRID_SIZE, (alto - 200) // GRID_SIZE)
+                ORIGEN_GRID_X = (ancho - (GRID_SIZE * tam_celda)) // 2
+                ORIGEN_GRID_Y = (alto - (GRID_SIZE * tam_celda)) // 2 + 40
+                
+                # Reescalar fondos
+                fondo = pygame.transform.smoothscale(pygame.image.load("Fondo 1 - 8 bits.jpg"), (ancho, alto))
+                fondo2 = pygame.transform.smoothscale(pygame.image.load("Fondo 2 - 8 Bits.jpg"), (ancho, alto))
+       
         ventana.blit(fondoEstrategia, (0, 0))
         NombreTitulo("Panel de Estrategia", Fuente_opcion, negro, ventana, ancho//2, 30)
 
@@ -990,6 +1152,12 @@ def resetear_sala():
     })
 
 def main():
+    global ventana, ancho, alto, fondo, fondo2,is_maximized
+    ventana = pygame.display.set_mode((ancho_base, alto_base))
+    is_maximized = False
+    actualizar_escala_global()
+    pygame.display.set_caption("Batalla Naval - UN")
+
     sonido_menu.play(-1) #repetir bucle
     modo = MenuPrincipal()
     if modo != "jugar":
