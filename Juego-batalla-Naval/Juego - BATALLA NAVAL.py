@@ -930,12 +930,13 @@ def JuegoIndividual(posiciones_jugador, datos_jugador):
                                     barco["hundido"] = True
                                 mensaje = "¡HAS IMPACTADO!"
                                 mensaje_tiempo = time.time()
-                                sonido_impacto.play()  # Sonido de impacto
+                                sonido_impacto.play()
                                 break
                         if not impacto:
                             mensaje = "AGUA"
                             mensaje_tiempo = time.time()
-                            sonido_salpicadura.play()  # Sonido de salpicadura
+                            sonido_salpicadura.play()
+                            turno_jugador = False  # Solo cambia el turno si falla
                         
                         # Cambiar turno a la CPU
                         turno_jugador = False
@@ -1021,22 +1022,15 @@ def JuegoAtaque(jugador_actual):
 
     while run and not game_over:
 
-        # Obtener datos actualizados (con inicialización segura)
-
-
         # Dibujar contador de disparos
         texto_disparos = Fuente_opcion.render(f"Disparos: {disparos_restantes}", True, verde)
         ventana.blit(texto_disparos, (ancho - 200, 20))
         
-        #-------------------//////////////------------------------------//////////////////-----------------------------
-
         ventana.blit(fondo2, (0, 0))
         atenuar_fondo(ventana, 20) 
         turno_actual = get_turno()
         barcos_oponente = sala_ref.child(oponente).child("barcos").get() or []
         
-
-        # /////////////////////////////////////////////////////////
         try:
             # 1. Obtener datos del oponente
             estado_oponente = sala_ref.child(oponente).get() or {}
@@ -1080,11 +1074,8 @@ def JuegoAtaque(jugador_actual):
             sonido_derrota.play()
             game_over = True
 
-        #////////////////////////////////////////////////
-
         # Obtener posiciones de barcos (convertidos a listas) de ambos jugadores
         barcos_oponente = sala_ref.child(oponente).child("barcos").get() or []
-
 
         mis_barcos_data = sala_ref.child(jugador_actual).child("barcos").get() or []
         mis_barcos = []
@@ -1105,7 +1096,6 @@ def JuegoAtaque(jugador_actual):
 
         mostrar_mensaje_hundido(barcos_oponente)
         
-        
         if time.time() - mensaje_tiempo < 2:
             mensaje_texto = Fuente_opcion.render(mensaje, True, rojo)
             ventana.blit(mensaje_texto, (ancho//2 - mensaje_texto.get_width()//2, alto - 100))
@@ -1120,7 +1110,7 @@ def JuegoAtaque(jugador_actual):
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
-                sys.exit()
+                return
             if event.type == pygame.MOUSEBUTTONDOWN and turno_actual == jugador_actual:
                 pos = pygame.mouse.get_pos()
                 celda = ClickTablero(pos, inicioX_ataque, inicioY_tableros)
@@ -1135,7 +1125,7 @@ def JuegoAtaque(jugador_actual):
                         # Verificar impacto usando barcos_oponente directamente
                         impacto = False
                         for barco in barcos_oponente:
-                            if coordenada in barco.get('posiciones', []):
+                            if isinstance(barco, dict) and [fila, col] in barco.get('posiciones', []):
                                 impacto = True
                                 break
                         
@@ -1143,10 +1133,10 @@ def JuegoAtaque(jugador_actual):
                         if not impacto:
                             pygame.time.delay(300)  # Pequeña pausa antes de la salpicadura
                             sonido_salpicadura.play()  # Sonido de salpicadura
+                            switch_turn(jugador_actual)
                         
                         mensaje = "¡IMPACTO!" if impacto else "AGUA"
                         mensaje_tiempo = time.time()
-                        switch_turn(jugador_actual)
                         time.sleep(0.5)
         
 
@@ -1233,56 +1223,64 @@ def main():
     sonido_menu.play(-1) #repetir bucle
     modo = MenuPrincipal()
 
-    if modo == "multijugador":
-        resetear_sala()
-        ventana.blit(fondo2, (0,0))
-        NombreTitulo("Selecciona tu jugador", Fuente_Principal, azul, ventana, ancho//2, 100)
-        boton_j1 = OpcionesMenu("Jugador 1", Fuente_opcion, blanco, azul, ventana, ancho//2 - 250, 250, 200, 50)
-        boton_j2 = OpcionesMenu("Jugador 2", Fuente_opcion, blanco, azul, ventana, ancho//2 + 50, 250, 200, 50)
+    try:
+
+        if modo == "multijugador":
+            resetear_sala()
+            ventana.blit(fondo2, (0,0))
+            NombreTitulo("Selecciona tu jugador", Fuente_Principal, azul, ventana, ancho//2, 100)
+            boton_j1 = OpcionesMenu("Jugador 1", Fuente_opcion, blanco, azul, ventana, ancho//2 - 250, 250, 200, 50)
+            boton_j2 = OpcionesMenu("Jugador 2", Fuente_opcion, blanco, azul, ventana, ancho//2 + 50, 250, 200, 50)
+        
+            pygame.display.flip()
+            jugador_num = None
+            while jugador_num not in [1, 2]:
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        pos = pygame.mouse.get_pos()
+                        if boton_j1.collidepoint(pos):
+                            jugador_num = 1
+                        elif boton_j2.collidepoint(pos):
+                            jugador_num = 2
+            jugador_actual, datos_jugador = registrar_usuario_gui(jugador_num)
+            # Fase de colocación de barcos (panel de estrategia)
+            posiciones_barcos = panel_strategy()  # Se obtienen las posiciones a través de "posiciones_barcos"
+            # Enviar datos a Firebase
+
+            guardar_datos_jugador(jugador_actual, datos_jugador, posiciones_barcos)
+            esperar_oponente()
+            if not get_turno():
+                set_turno("jugador1" if jugador_num == 1 else "jugador2")
+            # Fase de ataque (basada en Firebase)
+            try:
+                JuegoAtaque(jugador_actual)
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                mostrar_error("Error de conexión. Reintentando...")
+                time.sleep(2)
+                JuegoAtaque(jugador_actual)
+
+            finally:
+                if pygame.mixer.get_init():
+                    sonido_menu.stop()
+                    sonido_fondo.stop()
+                    pygame.mixer.quit()
+                pygame.quit() 
+            
+        elif modo == "individual":
+            datos_jugador = registrar_usuario_gui()
+            posiciones_barcos = panel_strategy()
+            JuegoIndividual(posiciones_barcos, datos_jugador)
+    except Exception as e:
+        print(f"Error: {e}")
     
-        pygame.display.flip()
-        jugador_num = None
-        while jugador_num not in [1, 2]:
-            for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = pygame.mouse.get_pos()
-                    if boton_j1.collidepoint(pos):
-                        jugador_num = 1
-                    elif boton_j2.collidepoint(pos):
-                        jugador_num = 2
-        jugador_actual, datos_jugador = registrar_usuario_gui(jugador_num)
-        # Fase de colocación de barcos (panel de estrategia)
-        posiciones_barcos = panel_strategy()  # Se obtienen las posiciones a través de "posiciones_barcos"
-        # Enviar datos a Firebase
-
-        guardar_datos_jugador(jugador_actual, datos_jugador, posiciones_barcos)
-        esperar_oponente()
-        if not get_turno():
-            set_turno("jugador1" if jugador_num == 1 else "jugador2")
-        # Fase de ataque (basada en Firebase)
-        try:
-            JuegoAtaque(jugador_actual)
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            mostrar_error("Error de conexión. Reintentando...")
-            time.sleep(2)
-            JuegoAtaque(jugador_actual)
-
-        finally:
+    finally:
+        if pygame.mixer.get_init():  
             sonido_menu.stop()
-            sonido_fondo.stop()  # Asegurar que la música se detenga al terminar el juego
-            pygame.mixer.quit()
-        
-    elif modo == "individual":
-        datos_jugador = registrar_usuario_gui()
-        posiciones_barcos = panel_strategy()
-        JuegoIndividual(posiciones_barcos, datos_jugador)
-        
-
-    sonido_menu.stop()
-    pygame.mixer.quit()
-
-
+            sonido_fondo.stop()
+            pygame.mixer.quit()  
+        pygame.quit() 
+            
 def mostrar_error(mensaje):
     ventana.blit(fondo2, (0,0))
     texto = Fuente_Principal.render(mensaje, True, rojo)
